@@ -1,0 +1,7 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Configure Netlify to redirect all rewrite paths to Next.js serverless handlers (managed by @netlify/plugin-nextjs automatically)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

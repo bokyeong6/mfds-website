@@ -1,18 +1,26 @@
 import { create } from 'zustand';
 import { Specimen, PharmacItem } from '../types';
 import { dataStore } from '../lib/dataStore';
-import { buildSpecimenToPharmacIndex } from '../lib/joinLogic';
 
 interface AppState {
   specimens: Specimen[];
   pharmacopoeia: PharmacItem[];
   isInitialized: boolean;
   isLoading: boolean;
-  specimenToPharmacMap: Map<string, PharmacItem>;
+  cachedStats: any | null;
   
   loadData: () => Promise<void>;
-  initializeData: (specimens: Specimen[], pharmacopoeia: PharmacItem[]) => Promise<void>;
+  initializeData: (
+    specimens: Specimen[], 
+    pharmacopoeia: PharmacItem[], 
+    onProgress?: (msg: string) => void
+  ) => Promise<void>;
   clearData: () => Promise<void>;
+  appendSpecimens: (specimens: Specimen[], onProgress?: (msg: string) => void) => Promise<void>;
+  appendPharmacopoeia: (pharmacopoeia: PharmacItem[], onProgress?: (msg: string) => void) => Promise<void>;
+  
+  setSpecimens: (specimens: Specimen[]) => void;
+  setPharmacopoeia: (pharmacopoeia: PharmacItem[]) => void;
 
   // Specimens CRUD wrappers
   addSpecimen: (data: Omit<Specimen, 'id'>) => Promise<Specimen>;
@@ -30,60 +38,41 @@ export const useAppStore = create<AppState>((set, get) => ({
   pharmacopoeia: [],
   isInitialized: false,
   isLoading: true,
-  specimenToPharmacMap: new Map(),
+  cachedStats: null,
 
   loadData: async () => {
-    // If specimens are already cached in memory, don't trigger loading state
-    if (get().specimens.length > 0 && get().isInitialized) {
-      return;
-    }
-    
-    console.time('useAppStore:loadData');
     set({ isLoading: true });
     try {
       const initialized = await dataStore.isInitialized();
       if (initialized) {
-        console.time('useAppStore:IndexedDB_Reads');
-        const specimens = await dataStore.getSpecimens();
-        const pharmacopoeia = await dataStore.getPharmacopoeia();
-        console.timeEnd('useAppStore:IndexedDB_Reads');
-        
-        console.time('useAppStore:Build_Index');
-        const map = buildSpecimenToPharmacIndex(pharmacopoeia);
-        console.timeEnd('useAppStore:Build_Index');
-        
+        const stats = await dataStore.getCachedStats();
         set({
-          specimens,
-          pharmacopoeia,
+          cachedStats: stats,
           isInitialized: true,
-          specimenToPharmacMap: map,
         });
       } else {
         set({
-          specimens: [],
-          pharmacopoeia: [],
+          cachedStats: null,
           isInitialized: false,
-          specimenToPharmacMap: new Map(),
         });
       }
     } catch (e) {
       console.error('Failed to load data from store', e);
     } finally {
       set({ isLoading: false });
-      console.timeEnd('useAppStore:loadData');
     }
   },
 
-  initializeData: async (specimens: Specimen[], pharmacopoeia: PharmacItem[]) => {
+  initializeData: async (specimens, pharmacopoeia, onProgress) => {
     set({ isLoading: true });
     try {
-      await dataStore.initialize(specimens, pharmacopoeia);
-      const map = buildSpecimenToPharmacIndex(pharmacopoeia);
+      await dataStore.initialize(specimens, pharmacopoeia, onProgress);
+      const stats = await dataStore.getCachedStats();
       set({
-        specimens,
-        pharmacopoeia,
+        specimens: [], // Do not cache all in memory
+        pharmacopoeia: [],
+        cachedStats: stats,
         isInitialized: true,
-        specimenToPharmacMap: map,
       });
     } catch (e) {
       console.error('Failed to initialize store data', e);
@@ -97,59 +86,127 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isLoading: true });
     try {
       await dataStore.clearAll();
+    } catch (e) {
+      console.error('Failed to clear database, resetting local store state anyway', e);
+    } finally {
       set({
         specimens: [],
         pharmacopoeia: [],
+        cachedStats: null,
         isInitialized: false,
-        specimenToPharmacMap: new Map(),
+        isLoading: false,
       });
+    }
+  },
+
+  appendSpecimens: async (specimens, onProgress) => {
+    set({ isLoading: true });
+    try {
+      await dataStore.appendSpecimens(specimens, onProgress);
+      const stats = await dataStore.getCachedStats();
+      set({ cachedStats: stats });
     } catch (e) {
-      console.error('Failed to clear data', e);
+      console.error('Failed to append specimens:', e);
+      throw e;
     } finally {
       set({ isLoading: false });
     }
   },
 
+  appendPharmacopoeia: async (pharmacopoeia, onProgress) => {
+    set({ isLoading: true });
+    try {
+      await dataStore.appendPharmacopoeia(pharmacopoeia, onProgress);
+      const stats = await dataStore.getCachedStats();
+      set({ cachedStats: stats });
+    } catch (e) {
+      console.error('Failed to append pharmacopoeia:', e);
+      throw e;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  setSpecimens: (specimens) => set({ specimens }),
+  setPharmacopoeia: (pharmacopoeia) => set({ pharmacopoeia }),
+
   addSpecimen: async (data) => {
     const newSpecimen = await dataStore.createSpecimen(data);
-    const updatedSpecimens = [...get().specimens, newSpecimen];
-    set({ specimens: updatedSpecimens });
+    
+    // Incrementally update cachedStats
+    const oldStats = get().cachedStats;
+    if (oldStats) {
+      const updatedStats = {
+        ...oldStats,
+        totalSpecimensCount: (oldStats.totalSpecimensCount || 0) + 1,
+        familyMetrics: {
+          ...oldStats.familyMetrics,
+          total: (oldStats.familyMetrics?.total || 0) + 1
+        }
+      };
+      await dataStore.saveCachedStats(updatedStats);
+      set({ cachedStats: updatedStats });
+    }
+
     return newSpecimen;
   },
 
   updateSpecimen: async (id, data) => {
     const updatedSpecimen = await dataStore.updateSpecimen(id, data);
-    const updatedSpecimens = get().specimens.map((s) => (s.id === id ? updatedSpecimen : s));
-    set({ specimens: updatedSpecimens });
     return updatedSpecimen;
   },
 
   deleteSpecimen: async (id) => {
     await dataStore.deleteSpecimen(id);
-    const updatedSpecimens = get().specimens.filter((s) => s.id !== id);
-    set({ specimens: updatedSpecimens });
+
+    // Incrementally update cachedStats
+    const oldStats = get().cachedStats;
+    if (oldStats) {
+      const updatedStats = {
+        ...oldStats,
+        totalSpecimensCount: Math.max(0, (oldStats.totalSpecimensCount || 1) - 1),
+        familyMetrics: {
+          ...oldStats.familyMetrics,
+          total: Math.max(0, (oldStats.familyMetrics?.total || 1) - 1)
+        }
+      };
+      await dataStore.saveCachedStats(updatedStats);
+      set({ cachedStats: updatedStats });
+    }
   },
 
   addPharmacoItem: async (data) => {
     const newItem = await dataStore.createPharmacoItem(data);
-    const updatedPharma = [...get().pharmacopoeia, newItem];
-    const map = buildSpecimenToPharmacIndex(updatedPharma);
-    set({ pharmacopoeia: updatedPharma, specimenToPharmacMap: map });
+    
+    const oldStats = get().cachedStats;
+    if (oldStats) {
+      const updatedStats = {
+        ...oldStats,
+        totalPharmacopoeiaCount: (oldStats.totalPharmacopoeiaCount || 0) + 1
+      };
+      await dataStore.saveCachedStats(updatedStats);
+      set({ cachedStats: updatedStats });
+    }
+
     return newItem;
   },
 
   updatePharmacoItem: async (id, data) => {
     const updatedItem = await dataStore.updatePharmacoItem(id, data);
-    const updatedPharma = get().pharmacopoeia.map((p) => (p.id === id ? updatedItem : p));
-    const map = buildSpecimenToPharmacIndex(updatedPharma);
-    set({ pharmacopoeia: updatedPharma, specimenToPharmacMap: map });
     return updatedItem;
   },
 
   deletePharmacoItem: async (id) => {
     await dataStore.deletePharmacoItem(id);
-    const updatedPharma = get().pharmacopoeia.filter((p) => p.id !== id);
-    const map = buildSpecimenToPharmacIndex(updatedPharma);
-    set({ pharmacopoeia: updatedPharma, specimenToPharmacMap: map });
+
+    const oldStats = get().cachedStats;
+    if (oldStats) {
+      const updatedStats = {
+        ...oldStats,
+        totalPharmacopoeiaCount: Math.max(0, (oldStats.totalPharmacopoeiaCount || 1) - 1)
+      };
+      await dataStore.saveCachedStats(updatedStats);
+      set({ cachedStats: updatedStats });
+    }
   },
 }));

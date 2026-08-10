@@ -17,6 +17,8 @@ export interface Specimen {
   lng: number;             // 경도
   pharmacopoeia: string | null; // KP / KHP / KP, KHP / null
   projectName: string;     // 과제명
+  imageUrls?: string[];    // Array of Firebase Storage image download URLs
+  imageMatchedBase?: string; // Precomputed image base filename (e.g. KHR_19369)
 }
 
 export interface PharmacItem {

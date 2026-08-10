@@ -19,9 +19,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="dark">
+    <html lang="ko" className="light">
       <body
-        className={`${outfit.variable} font-sans antialiased bg-slate-950 text-slate-100`}
+        className={`${outfit.variable} font-sans antialiased bg-slate-50 text-slate-900`}
       >
         <AppLayoutWrapper>{children}</AppLayoutWrapper>
       </body>

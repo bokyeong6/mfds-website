@@ -32,35 +32,35 @@ export default function StatsPage() {
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">통계 및 분석</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900">통계 및 분석</h1>
+          <p className="text-sm text-slate-500 mt-1">
             제주센터의 수집된 표본 분포와 공정서 등재 생약 현황을 비교·분석합니다.
           </p>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex p-1 bg-slate-900 border border-slate-800 rounded-xl w-fit">
+        <div className="flex p-1 bg-slate-100 border border-slate-200 rounded-xl w-fit">
           <button
             onClick={() => setStatsTab('family')}
             className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all
               ${
                 statsTab === 'family'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-emerald-500 text-white shadow-md'
+                  : 'text-slate-550 hover:text-slate-850'
               }`}
           >
             <BarChart3 className="w-4 h-4" />
-            과명별 분포
+            표본 현황
           </button>
           <button
             onClick={() => setStatsTab('pharmacopoeia')}
             className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all
               ${
                 statsTab === 'pharmacopoeia'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-emerald-500 text-white shadow-md'
+                  : 'text-slate-550 hover:text-slate-850'
               }`}
           >
             <ClipboardList className="w-4 h-4" />

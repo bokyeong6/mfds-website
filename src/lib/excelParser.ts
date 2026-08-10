@@ -88,6 +88,40 @@ export const parsePharmacopoeiaExcel = (arrayBuffer: ArrayBuffer): PharmacItem[]
   
   const parsedItems: PharmacItem[] = [];
   
+  // Find column indices dynamically based on header row
+  const headers = Array.from(rows[0] || []).map((h) => String(h || '').trim());
+
+  const getColIndex = (keywords: string[], fallback: number): number => {
+    const idx = headers.findIndex((h) =>
+      h && keywords.some((k) => h.toLowerCase().includes(k.toLowerCase()))
+    );
+    return idx !== -1 ? idx : fallback;
+  };
+
+  const getExactColIndex = (keyword: string, fallback: number): number => {
+    const idx = headers.findIndex((h) => h && h.trim() === keyword);
+    return idx !== -1 ? idx : fallback;
+  };
+
+  const pharmacopoeiaIdx = getColIndex(['공정서'], 1);
+  const itemIdx = getColIndex(['품목'], 2);
+  const typeIdx = getColIndex(['형태'], 3);
+  const confirmTestIdx = getColIndex(['확인시험'], 4);
+  const purityTestIdx = getExactColIndex('순도시험', 5);
+  const purityItemsIdx = getColIndex(['순도시험(항목)', '순도시험 항목'], 6);
+  const quantMethodIdx = getColIndex(['정량법'], 7);
+  const dryLossIdx = getColIndex(['건조감량'], 8);
+  
+  const ashColIdx = headers.findIndex((h) => h && h.trim().includes('회분') && !h.trim().includes('산불용성'));
+  const ashIdx = ashColIdx !== -1 ? ashColIdx : 9;
+  
+  const acidAshIdx = getColIndex(['산불용성회분'], 10);
+  const extractContentIdx = getColIndex(['엑스함량'], 11);
+  const essentialOilIdx = getColIndex(['정유함량'], 12);
+  
+  const specimenIdsStartColIdx = headers.findIndex((h) => h && h.trim().includes('제주센터표본'));
+  const specimenIdsStartIdx = specimenIdsStartColIdx !== -1 ? specimenIdsStartColIdx + 1 : 13;
+
   // Start from row index 1 to skip headers
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -99,24 +133,24 @@ export const parsePharmacopoeiaExcel = (arrayBuffer: ArrayBuffer): PharmacItem[]
     const idx = typeof idxVal === 'number' ? idxVal : parseInt(String(idxVal).trim(), 10);
     if (isNaN(idx)) continue;
     
-    const pharmacopoeia = safeString(row[1]);
-    const item = safeString(row[2]);
+    const pharmacopoeia = safeString(row[pharmacopoeiaIdx]);
+    const item = safeString(row[itemIdx]);
     if (!item) continue; // Skip rows without item name
     
-    const type = safeString(row[3]);
-    const confirmTest = row[4] !== undefined && row[4] !== null ? safeString(row[4]) : null;
-    const purityTest = row[5] !== undefined && row[5] !== null ? safeString(row[5]) : null;
-    const purityItems = row[6] !== undefined && row[6] !== null ? safeString(row[6]) : null;
-    const quantMethod = row[7] !== undefined && row[7] !== null ? safeString(row[7]) : null;
-    const dryLoss = row[8] !== undefined && row[8] !== null ? safeString(row[8]) : null;
-    const ash = row[9] !== undefined && row[9] !== null ? safeString(row[9]) : null;
-    const acidAsh = row[10] !== undefined && row[10] !== null ? safeString(row[10]) : null;
-    const extractContent = row[11] !== undefined && row[11] !== null ? safeString(row[11]) : null;
-    const essentialOil = row[12] !== undefined && row[12] !== null ? safeString(row[12]) : null;
+    const type = safeString(row[typeIdx]);
+    const confirmTest = row[confirmTestIdx] !== undefined && row[confirmTestIdx] !== null ? safeString(row[confirmTestIdx]) : null;
+    const purityTest = row[purityTestIdx] !== undefined && row[purityTestIdx] !== null ? safeString(row[purityTestIdx]) : null;
+    const purityItems = row[purityItemsIdx] !== undefined && row[purityItemsIdx] !== null ? safeString(row[purityItemsIdx]) : null;
+    const quantMethod = row[quantMethodIdx] !== undefined && row[quantMethodIdx] !== null ? safeString(row[quantMethodIdx]) : null;
+    const dryLoss = row[dryLossIdx] !== undefined && row[dryLossIdx] !== null ? safeString(row[dryLossIdx]) : null;
+    const ash = row[ashIdx] !== undefined && row[ashIdx] !== null ? safeString(row[ashIdx]) : null;
+    const acidAsh = row[acidAshIdx] !== undefined && row[acidAshIdx] !== null ? safeString(row[acidAshIdx]) : null;
+    const extractContent = row[extractContentIdx] !== undefined && row[extractContentIdx] !== null ? safeString(row[extractContentIdx]) : null;
+    const essentialOil = row[essentialOilIdx] !== undefined && row[essentialOilIdx] !== null ? safeString(row[essentialOilIdx]) : null;
     
-    // Extract specimenIds from columns N (index 13) to end
+    // Extract specimenIds from specimenIdsStartIdx to end
     const specimenIds: string[] = [];
-    for (let c = 13; c < row.length; c++) {
+    for (let c = specimenIdsStartIdx; c < row.length; c++) {
       const val = row[c];
       if (val !== undefined && val !== null) {
         const idStr = String(val).trim();
@@ -161,27 +195,53 @@ export const parseSpecimensExcel = (arrayBuffer: ArrayBuffer): Specimen[] => {
   
   const parsedItems: Specimen[] = [];
   
+  // Find column indices dynamically based on header row
+  const headers = Array.from(rows[0] || []).map((h) => String(h || '').trim());
+
+  const getColIndex = (keywords: string[], fallback: number): number => {
+    const idx = headers.findIndex((h) =>
+      h && keywords.some((k) => h.toLowerCase().includes(k.toLowerCase()))
+    );
+    return idx !== -1 ? idx : fallback;
+  };
+
+  const managementIdIdx = getColIndex(['관리번호', 'managementid', 'id'], 0);
+  const specimenNoIdx = getColIndex(['표본번호', 'specimenno'], 1);
+  const storageIdx = getColIndex(['수장고', 'storage'], 2);
+  const storageLocationIdx = getColIndex(['위치', 'storagelocation'], 3);
+  const herbNameIdx = getColIndex(['생약명', 'herbname'], 4);
+  const korNameIdx = getColIndex(['국명', 'korname'], 5);
+  const sciNameIdx = getColIndex(['학명', 'sciname'], 6);
+  const collectDateIdx = getColIndex(['수집일', '수집날짜', 'collectdate'], 7);
+  const collectPlaceIdx = getColIndex(['수집지', '수집장소', 'collectplace'], 8);
+  const importanceIdx = getColIndex(['중요도', 'importance'], 9);
+  const genusIdx = getColIndex(['속명', 'genus'], 10);
+  const familyIdx = getColIndex(['과명', 'family'], 11);
+  const gpsIdx = getColIndex(['좌표', 'gps'], 12);
+  const pharmacopoeiaIdx = getColIndex(['공정서', 'pharmacopoeia'], 13);
+  const projectNameIdx = getColIndex(['과제명', 'projectname'], 14);
+
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
     if (!row || row.length === 0) continue;
     
-    const managementId = safeString(row[0]);
+    const managementId = safeString(row[managementIdIdx]);
     if (!managementId) continue; // Skip rows without management ID
     
-    const specimenNo = safeString(row[1]);
-    const storage = safeString(row[2]);
-    const storageLocation = safeString(row[3]);
-    const herbName = safeString(row[4]);
-    const korName = safeString(row[5]);
-    const sciName = safeString(row[6]);
-    const collectDate = parseExcelDate(row[7]);
-    const collectPlace = safeString(row[8]);
-    const importance = safeString(row[9]);
-    const genus = safeString(row[10]);
-    const family = safeString(row[11]);
-    const gpsRaw = safeString(row[12]);
-    const pharmacopoeia = row[13] !== undefined && row[13] !== null ? safeString(row[13]) : null;
-    const projectName = safeString(row[14]);
+    const specimenNo = safeString(row[specimenNoIdx]);
+    const storage = safeString(row[storageIdx]);
+    const storageLocation = safeString(row[storageLocationIdx]);
+    const herbName = safeString(row[herbNameIdx]);
+    const korName = safeString(row[korNameIdx]);
+    const sciName = safeString(row[sciNameIdx]);
+    const collectDate = parseExcelDate(row[collectDateIdx]);
+    const collectPlace = safeString(row[collectPlaceIdx]);
+    const importance = safeString(row[importanceIdx]);
+    const genus = safeString(row[genusIdx]);
+    const family = safeString(row[familyIdx]);
+    const gpsRaw = safeString(row[gpsIdx]);
+    const pharmacopoeia = row[pharmacopoeiaIdx] !== undefined && row[pharmacopoeiaIdx] !== null ? safeString(row[pharmacopoeiaIdx]) : null;
+    const projectName = safeString(row[projectNameIdx]);
     
     // GPS Parsing: "latitude, longitude"
     let lat = 0;
