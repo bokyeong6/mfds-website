@@ -37,13 +37,6 @@ function SidebarItem({ href, icon, label, active }: SidebarItemProps) {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const clearData = useAppStore((state) => state.clearData);
-
-  const handleReuploadClick = async () => {
-    if (window.confirm('기존 데이터를 모두 삭제하고 초기 엑셀 업로드 화면으로 돌아가시겠습니까?')) {
-      await clearData();
-    }
-  };
 
   return (
     <aside className="w-16 flex flex-col items-center bg-white border-r border-slate-200 h-screen py-4 shrink-0 z-[1005]">
@@ -88,19 +81,6 @@ export default function Sidebar() {
 
       {/* Settings at the bottom */}
       <div className="w-full flex flex-col items-center border-t border-slate-200 pt-4 gap-1">
-        <button
-          onClick={handleReuploadClick}
-          className="group relative flex items-center justify-center py-3 w-full text-slate-500 hover:text-emerald-600 transition-colors"
-          title="엑셀 데이터 재업로드"
-        >
-          <div className="p-2.5 rounded-xl hover:bg-slate-100 transition-all duration-200 flex items-center justify-center">
-            <RefreshCw className="w-5 h-5" />
-          </div>
-          <span className="absolute left-16 scale-0 transition-all duration-150 origin-left group-hover:scale-100 bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded shadow-xl whitespace-nowrap z-[9999]">
-            데이터 재업로드
-          </span>
-        </button>
-        
         <SidebarItem
           href="/settings"
           icon={<Settings className="w-5 h-5" />}

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { Trash2, Upload, Database, RefreshCw, AlertTriangle, CheckCircle2, FolderUp, Loader2 } from 'lucide-react';
+import { Trash2, Upload, Database, RefreshCw, AlertTriangle, CheckCircle2, FolderUp, Loader2, Lock } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
 import { collection, query, where, getDocs, doc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { storage, db, auth } from '../../lib/firebase';
@@ -12,6 +12,30 @@ import { detectFileType, parsePharmacopoeiaExcel, parseSpecimensExcel } from '..
 export default function SettingsPage() {
   const clearData = useAppStore((state) => state.clearData);
   const cachedStats = useAppStore((state) => state.cachedStats);
+
+  // Admin Password States
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isAuthorized, setIsAuthorized] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('isAdminAuthorized') === 'true';
+    }
+    return false;
+  });
+  const [authError, setAuthError] = useState(false);
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin1234';
+    if (passwordInput === correctPassword) {
+      setIsAuthorized(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('isAdminAuthorized', 'true');
+      }
+      setAuthError(false);
+    } else {
+      setAuthError(true);
+    }
+  };
 
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmReload, setConfirmReload] = useState(false);
@@ -235,6 +259,56 @@ export default function SettingsPage() {
       setUploading(false);
     }
   };
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl p-8 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mb-2">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900">관리자 페이지 접근 제한</h2>
+            <p className="text-sm text-slate-500">
+              시스템 설정을 변경하려면 관리자 비밀번호를 입력하세요.
+            </p>
+          </div>
+
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                비밀번호
+              </label>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="비밀번호 입력"
+                className={`w-full px-4 py-2.5 bg-white border rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none transition-all text-sm
+                  ${
+                    authError
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+                  }`}
+              />
+              {authError && (
+                <p className="text-xs text-rose-500 font-semibold mt-1">
+                  비밀번호가 올바르지 않습니다.
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all text-sm cursor-pointer"
+            >
+              인증 및 입장
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   const progressPercent = totalFilesCount > 0 ? Math.round((uploadedCount / totalFilesCount) * 100) : 0;
 
