@@ -2,6 +2,11 @@
   command = "npm run build"
   publish = ".next"
 
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["!public/images/**", "!node_modules/xlsx/dist/**"]
+
+
 # Configure Netlify to redirect all rewrite paths to Next.js serverless handlers (managed by @netlify/plugin-nextjs automatically)
 [[plugins]]
   package = "@netlify/plugin-nextjs"
