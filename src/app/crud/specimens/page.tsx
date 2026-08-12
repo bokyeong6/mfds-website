@@ -159,8 +159,7 @@ export default function SpecimensCRUD() {
 
   useEffect(() => {
     fetchSpecimens();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
+  }, [fetchSpecimens]);
 
   // Sorting Handler
   const requestSort = (key: keyof Specimen) => {
