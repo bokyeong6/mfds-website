@@ -103,13 +103,13 @@ export default function OnboardingModal() {
 
         console.log('공정서_시험법 엑셀 파싱 시작');
         setStatusMessage('공정서_시험법 엑셀 파싱 중...');
-        const pharmacItems = parsePharmacopoeiaExcel(pharmaFile.buffer);
+        const pharmacItems = await parsePharmacopoeiaExcel(pharmaFile.buffer);
         console.log(`공정서_시험법 엑셀 파싱 완료 (항목: ${pharmacItems.length}건), 제주센터표본통합 엑셀 파싱 시작`);
 
         if (isTimedOut) return;
 
         setStatusMessage('제주센터표본통합 엑셀 파싱 중... (약 2만 행)');
-        const specimens = parseSpecimensExcel(specimenFile.buffer);
+        const specimens = await parseSpecimensExcel(specimenFile.buffer);
         console.log(`제주센터표본통합 엑셀 파싱 완료 (표본: ${specimens.length}건), 데이터베이스 저장 시작`);
 
         if (pharmacItems.length === 0 || specimens.length === 0) {

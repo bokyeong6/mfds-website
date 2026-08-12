@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import FamilyStats from '../../components/Stats/FamilyStats';
-import PharmaStats from '../../components/Stats/PharmaStats';
+import dynamic from 'next/dynamic';
+
+const FamilyStats = dynamic(() => import('../../components/Stats/FamilyStats'), { ssr: false });
+const PharmaStats = dynamic(() => import('../../components/Stats/PharmaStats'), { ssr: false });
 import { BarChart3, ClipboardList } from 'lucide-react';
 
 export default function StatsPage() {

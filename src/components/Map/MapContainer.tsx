@@ -11,17 +11,6 @@ const DynamicMap = dynamic(
       return mod;
     }).catch((err) => {
       console.error('Failed to dynamically import MapView:', err);
-      if (typeof window !== 'undefined') {
-        fetch('/api/log-error', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'dynamic_import_error',
-            message: err.message || String(err),
-            stack: err.stack || null,
-          }),
-        }).catch(() => {});
-      }
       throw err;
     });
   },

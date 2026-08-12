@@ -6,7 +6,6 @@ import { Trash2, Upload, Database, RefreshCw, AlertTriangle, CheckCircle2, Folde
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
 import { collection, query, where, getDocs, doc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { storage, db, auth } from '../../lib/firebase';
-import * as XLSX from 'xlsx';
 import { detectFileType, parsePharmacopoeiaExcel, parseSpecimensExcel } from '../../lib/excelParser';
 
 export default function SettingsPage() {
@@ -72,6 +71,7 @@ export default function SettingsPage() {
         const buffer = event.target?.result as ArrayBuffer;
         
         // Read file structure
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(buffer, { type: 'array', sheetRows: 5 });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
@@ -91,7 +91,7 @@ export default function SettingsPage() {
 
         if (type === 'pharma') {
           setAppendMessage('공정서 엑셀 파싱 중...');
-          const pharmacItems = parsePharmacopoeiaExcel(buffer);
+          const pharmacItems = await parsePharmacopoeiaExcel(buffer);
           if (pharmacItems.length === 0) {
             throw new Error('파싱된 공정서 행이 없습니다.');
           }
@@ -99,7 +99,7 @@ export default function SettingsPage() {
           await appendPharmacopoeiaAction(pharmacItems, (msg) => setAppendMessage(msg));
         } else {
           setAppendMessage('표본 엑셀 파싱 중...');
-          const specimens = parseSpecimensExcel(buffer);
+          const specimens = await parseSpecimensExcel(buffer);
           if (specimens.length === 0) {
             throw new Error('파싱된 표본 행이 없습니다.');
           }

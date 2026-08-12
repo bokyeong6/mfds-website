@@ -8,6 +8,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
+    serverComponentsExternalPackages: ['xlsx', 'canvas', 'chart.js'],
     outputFileTracingExcludes: {
       '*': [
         '**/node_modules/xlsx/**',

@@ -1,9 +1,8 @@
-import * as XLSX from 'xlsx';
 import { Specimen, PharmacItem } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 // Helper to format date properly (handling Date objects, serial numbers, and strings)
-const parseExcelDate = (val: unknown): string => {
+const parseExcelDate = (val: unknown, XLSX: any): string => {
   if (val === undefined || val === null) return '';
   if (val instanceof Date) {
     if (isNaN(val.getTime())) return '';
@@ -76,7 +75,8 @@ export const detectFileType = (row: unknown[]): DetectedFileType => {
 };
 
 // Parse Pharmacopoeia file
-export const parsePharmacopoeiaExcel = (arrayBuffer: ArrayBuffer): PharmacItem[] => {
+export const parsePharmacopoeiaExcel = async (arrayBuffer: ArrayBuffer): Promise<PharmacItem[]> => {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
@@ -183,7 +183,8 @@ export const parsePharmacopoeiaExcel = (arrayBuffer: ArrayBuffer): PharmacItem[]
 };
 
 // Parse Specimens file
-export const parseSpecimensExcel = (arrayBuffer: ArrayBuffer): Specimen[] => {
+export const parseSpecimensExcel = async (arrayBuffer: ArrayBuffer): Promise<Specimen[]> => {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
@@ -234,7 +235,7 @@ export const parseSpecimensExcel = (arrayBuffer: ArrayBuffer): Specimen[] => {
     const herbName = safeString(row[herbNameIdx]);
     const korName = safeString(row[korNameIdx]);
     const sciName = safeString(row[sciNameIdx]);
-    const collectDate = parseExcelDate(row[collectDateIdx]);
+    const collectDate = parseExcelDate(row[collectDateIdx], XLSX);
     const collectPlace = safeString(row[collectPlaceIdx]);
     const importance = safeString(row[importanceIdx]);
     const genus = safeString(row[genusIdx]);

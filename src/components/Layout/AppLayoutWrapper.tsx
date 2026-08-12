@@ -3,7 +3,8 @@
 import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import Sidebar from './Sidebar';
-import OnboardingModal from './OnboardingModal';
+import dynamic from 'next/dynamic';
+const OnboardingModal = dynamic(() => import('./OnboardingModal'), { ssr: false });
 import { Loader2 } from 'lucide-react';
 
 interface AppLayoutWrapperProps {
@@ -19,11 +20,7 @@ export default function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
     if (typeof window === 'undefined') return;
 
     const reportError = (errorInfo: unknown) => {
-      fetch('/api/log-error', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(errorInfo),
-      }).catch(() => {});
+      console.error('Logged Client Error:', errorInfo);
     };
 
     const handleError = (event: ErrorEvent) => {
