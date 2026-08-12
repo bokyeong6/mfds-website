@@ -4,7 +4,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["!public/images/**", "!node_modules/xlsx/dist/**"]
+  included_files = ["!public/images/**", "!node_modules/xlsx/**", "!node_modules/canvas/**"]
 
 
 # Configure Netlify to redirect all rewrite paths to Next.js serverless handlers (managed by @netlify/plugin-nextjs automatically)

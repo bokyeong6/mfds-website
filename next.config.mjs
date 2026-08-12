@@ -7,6 +7,14 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    outputFileTracingExcludes: {
+      '*': [
+        '**/node_modules/xlsx/**',
+        '**/node_modules/canvas/**',
+      ],
+    },
+  },
 };
 
 export default nextConfig;
