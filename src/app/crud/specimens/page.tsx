@@ -31,6 +31,8 @@ export default function SpecimensCRUD() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [photoOnly, setPhotoOnly] = useState(false);
+  const [selectedSpecimen, setSelectedSpecimen] = useState<Specimen | null>(null);
   
   // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -82,6 +84,9 @@ export default function SpecimensCRUD() {
           where('managementId', '<=', term + '\uf8ff')
         );
       }
+      if (photoOnly) {
+        qCount = query(qCount, where('imageUrls', '!=', []));
+      }
       
       const countSnap = await getCountFromServer(qCount);
       setTotalCount(countSnap.data().count);
@@ -101,11 +106,21 @@ export default function SpecimensCRUD() {
       } else {
         const sortField = sortConfig?.key || 'managementId';
         const sortDir = sortConfig?.direction || 'asc';
-        q = query(
-          specimensRef,
-          orderBy(sortField, sortDir),
-          limit(itemsPerPage)
-        );
+        
+        if (photoOnly) {
+          q = query(
+            specimensRef,
+            where('imageUrls', '!=', []),
+            orderBy('imageUrls', 'asc'),
+            limit(itemsPerPage)
+          );
+        } else {
+          q = query(
+            specimensRef,
+            orderBy(sortField, sortDir),
+            limit(itemsPerPage)
+          );
+        }
       }
 
       if (currentPage > 1 && lastDocs[currentPage - 2]) {
@@ -113,7 +128,13 @@ export default function SpecimensCRUD() {
       }
 
       const snap = await getDocs(q);
-      const list = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Specimen));
+      let list = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Specimen));
+      
+      // Filter locally if both search and photoOnly are active
+      if (searchTerm && photoOnly) {
+        list = list.filter(item => item.imageUrls && item.imageUrls.length > 0);
+      }
+      
       setItems(list);
 
       if (snap.docs.length > 0) {
@@ -129,12 +150,12 @@ export default function SpecimensCRUD() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, currentPage, sortConfig, lastDocs]);
+  }, [searchTerm, currentPage, sortConfig, lastDocs, photoOnly]);
 
   useEffect(() => {
     setLastDocs([]);
     setCurrentPage(1);
-  }, [searchTerm, sortConfig]);
+  }, [searchTerm, sortConfig, photoOnly]);
 
   useEffect(() => {
     fetchSpecimens();
@@ -352,18 +373,32 @@ export default function SpecimensCRUD() {
 
       {/* Filter and stats indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-100/50 p-4 border border-slate-200 rounded-xl">
-        <div className="relative flex-1 max-w-md">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            placeholder="관리번호, 생약명, 국명 또는 과명 검색"
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-all"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+        <div className="relative flex-1 max-w-lg flex items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="관리번호, 생약명, 국명 또는 과명 검색"
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-all"
+            />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          </div>
+
+          <button
+            onClick={() => setPhotoOnly(!photoOnly)}
+            className={`px-3 py-2 border rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 shrink-0 ${
+              photoOnly
+                ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+            }`}
+          >
+            <span>📷</span>
+            사진 보유 품목만 보기
+          </button>
         </div>
         
         <div className="text-xs text-slate-500 font-medium">
@@ -429,7 +464,11 @@ export default function SpecimensCRUD() {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {paginatedItems.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                <tr
+                  key={item.id}
+                  className="hover:bg-slate-50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedSpecimen(item)}
+                >
                   <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-800">{item.managementId}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{item.herbName || '-'}</td>
                   <td className="px-4 py-3 text-emerald-600 font-medium">{item.korName || '-'}</td>
@@ -450,14 +489,20 @@ export default function SpecimensCRUD() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
-                        onClick={() => handleOpenEdit(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEdit(item);
+                        }}
                         className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-emerald-600 transition-colors"
                         title="편집"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => setDeleteConfirmId(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(item.id);
+                        }}
                         className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-rose-600 transition-colors"
                         title="삭제"
                       >
@@ -835,6 +880,147 @@ export default function SpecimensCRUD() {
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-sm transition-colors"
               >
                 삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Specimen Detail & Photo Modal */}
+      {selectedSpecimen && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 text-slate-900 overflow-y-auto">
+          <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col my-8 animate-in zoom-in-95 duration-200 overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {selectedSpecimen.korName || selectedSpecimen.herbName || '표본 상세 정보'}
+                </h3>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedSpecimen.managementId}</p>
+              </div>
+              <button
+                onClick={() => setSelectedSpecimen(null)}
+                className="p-1.5 rounded-full hover:bg-slate-250 text-slate-550 hover:text-slate-850 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+              {/* Photo Area */}
+              {selectedSpecimen.imageUrls && selectedSpecimen.imageUrls.length > 0 ? (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">표본 사진</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {selectedSpecimen.imageUrls.map((url, idx) => (
+                      <div key={idx} className="relative aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={`${selectedSpecimen.korName || '표본'} 사진 ${idx + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold"
+                        >
+                          원본 보기 ↗
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center text-slate-400 text-sm">
+                  📷 등록된 표본 사진이 없습니다.
+                </div>
+              )}
+
+              {/* Information Grid */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-550 uppercase tracking-wider border-b border-slate-100 pb-2">기본 정보</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">관리번호</span>
+                    <span className="text-slate-800 font-semibold font-mono">{selectedSpecimen.managementId || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">표본번호</span>
+                    <span className="text-slate-800 font-semibold font-mono">{selectedSpecimen.specimenNo || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">생약명</span>
+                    <span className="text-slate-800 font-semibold">{selectedSpecimen.herbName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">국명</span>
+                    <span className="text-slate-800 font-semibold text-emerald-600">{selectedSpecimen.korName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">학명</span>
+                    <span className="text-slate-800 font-semibold italic">{selectedSpecimen.sciName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">과명</span>
+                    <span className="text-slate-800 font-semibold">{selectedSpecimen.family || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">속명</span>
+                    <span className="text-slate-800 font-semibold">{selectedSpecimen.genus || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">중요도</span>
+                    <span className="text-slate-800 font-semibold">{selectedSpecimen.importance || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">수장고</span>
+                    <span className="text-slate-800 font-semibold">{selectedSpecimen.storage || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">수장위치</span>
+                    <span className="text-slate-800 font-semibold">{selectedSpecimen.storageLocation || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">수집날짜</span>
+                    <span className="text-slate-800 font-semibold font-mono">{selectedSpecimen.collectDate || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">GPS 좌표</span>
+                    <span className="text-slate-800 font-semibold font-mono">{selectedSpecimen.gps || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2">
+                    <span className="text-slate-400 font-medium">공정서 등재</span>
+                    <span className="text-slate-800 font-semibold">
+                      {selectedSpecimen.pharmacopoeia ? (
+                        <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-500/25 text-emerald-600 rounded text-[10px] font-semibold font-mono">
+                          {selectedSpecimen.pharmacopoeia}
+                        </span>
+                      ) : '미등재'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100/50 pb-2 md:col-span-2">
+                    <span className="text-slate-400 font-medium">과제명</span>
+                    <span className="text-slate-800 font-semibold">{selectedSpecimen.projectName || '-'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-slate-400 font-medium">수집장소</span>
+                    <span className="text-slate-800 font-semibold leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200/60">{selectedSpecimen.collectPlace || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50">
+              <button
+                onClick={() => setSelectedSpecimen(null)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-sm transition-colors shadow-md shadow-slate-950/10 cursor-pointer"
+              >
+                닫기
               </button>
             </div>
           </div>
