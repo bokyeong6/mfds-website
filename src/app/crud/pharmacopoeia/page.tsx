@@ -38,6 +38,7 @@ export default function PharmacopoeiaCRUD() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PharmacItem | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [textDetail, setTextDetail] = useState<{ title: string; content: string } | null>(null);
 
   // Form Fields State
   const [formData, setFormData] = useState<Omit<PharmacItem, 'id' | 'specimenIds'> & { specimenIdsStr: string }>({
@@ -444,28 +445,58 @@ export default function PharmacopoeiaCRUD() {
                       {item.pharmacopoeia}
                     </span>
                   </td>
-                  <td
-                    onClick={() => handleItemClick(item.item, item.pharmacopoeia)}
-                    className="px-4 py-3 text-emerald-600 font-bold hover:underline cursor-pointer"
-                  >
+                  {/* 품목명: whitespace-nowrap으로 한 줄 유지 */}
+                  <td className="px-4 py-3 text-emerald-600 font-bold whitespace-nowrap">
                     {item.item}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{item.type || '-'}</td>
-                  <td className="px-4 py-3 text-xs leading-snug truncate max-w-[200px] text-slate-655" title={item.confirmTest || ''}>
-                    {item.confirmTest || '-'}
+                  {/* 형태: whitespace-nowrap으로 한 줄 유지 */}
+                  <td className="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">{item.type || '-'}</td>
+                  {/* 확인시험: 클릭 시 팝업 */}
+                  <td className="px-4 py-3 text-xs text-slate-650 max-w-[180px]">
+                    {item.confirmTest ? (
+                      <button
+                        onClick={() => setTextDetail({ title: `확인시험 — ${item.item}`, content: item.confirmTest! })}
+                        className="text-left leading-snug line-clamp-3 hover:text-emerald-600 cursor-pointer transition-colors"
+                        title="클릭하면 전체 내용을 볼 수 있습니다"
+                      >
+                        {item.confirmTest}
+                      </button>
+                    ) : <span className="text-slate-400">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-xs leading-snug truncate max-w-[180px] text-slate-655" title={`${item.purityTest || ''} ${item.purityItems || ''}`.trim()}>
-                    {item.purityTest || '-'}
-                    {item.purityItems ? ` (${item.purityItems})` : ''}
+                  {/* 순도시험: 클릭 시 팝업 */}
+                  <td className="px-4 py-3 text-xs text-slate-650 max-w-[180px]">
+                    {(item.purityTest || item.purityItems) ? (
+                      <button
+                        onClick={() => setTextDetail({
+                          title: `순도시험 — ${item.item}`,
+                          content: [item.purityTest, item.purityItems ? `(${item.purityItems})` : ''].filter(Boolean).join('\n')
+                        })}
+                        className="text-left leading-snug line-clamp-3 hover:text-emerald-600 cursor-pointer transition-colors"
+                        title="클릭하면 전체 내용을 볼 수 있습니다"
+                      >
+                        {item.purityTest || '-'}
+                        {item.purityItems ? ` (${item.purityItems})` : ''}
+                      </button>
+                    ) : <span className="text-slate-400">-</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-650 text-xs whitespace-nowrap">{item.dryLoss || '-'}</td>
                   <td className="px-4 py-3 text-slate-650 text-xs whitespace-nowrap">{item.ash || '-'}</td>
                   <td className="px-4 py-3 text-slate-650 text-xs whitespace-nowrap">{item.acidAsh || '-'}</td>
                   <td className="px-4 py-3 text-slate-650 text-xs whitespace-nowrap">{item.essentialOil || '-'}</td>
                   <td className="px-4 py-3 text-slate-650 text-xs whitespace-nowrap">{item.extractContent || '-'}</td>
-                  <td className="px-4 py-3 text-xs leading-snug truncate max-w-[150px] text-slate-655" title={item.quantMethod || ''}>
-                    {item.quantMethod || '-'}
+                  {/* 정량법: 클릭 시 팝업 */}
+                  <td className="px-4 py-3 text-xs text-slate-650 max-w-[150px]">
+                    {item.quantMethod ? (
+                      <button
+                        onClick={() => setTextDetail({ title: `정량법 — ${item.item}`, content: item.quantMethod! })}
+                        className="text-left leading-snug line-clamp-3 hover:text-emerald-600 cursor-pointer transition-colors"
+                        title="클릭하면 전체 내용을 볼 수 있습니다"
+                      >
+                        {item.quantMethod}
+                      </button>
+                    ) : <span className="text-slate-400">-</span>}
                   </td>
+                  {/* 관련 표본수: 클릭 시에만 지도 이동 */}
                   <td className="px-4 py-3">
                     <button
                       onClick={() => handleItemClick(item.item, item.pharmacopoeia)}
@@ -840,6 +871,43 @@ export default function PharmacopoeiaCRUD() {
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-sm transition-colors"
               >
                 삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Text Detail Popup Modal */}
+      {textDetail && (
+        <div
+          className="fixed inset-0 z-[2100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+          onClick={() => setTextDetail(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-sm font-bold text-slate-800 leading-tight">{textDetail.title}</h3>
+              <button
+                onClick={() => setTextDetail(null)}
+                className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors ml-4 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Content */}
+            <div className="p-5 max-h-[60vh] overflow-y-auto">
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{textDetail.content}</p>
+            </div>
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50">
+              <button
+                onClick={() => setTextDetail(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-lg text-sm transition-colors"
+              >
+                닫기
               </button>
             </div>
           </div>
