@@ -417,12 +417,12 @@ export default function PharmacopoeiaCRUD() {
                 <th className="px-4 py-3.5">형태</th>
                 <th className="px-4 py-3.5">확인시험</th>
                 <th className="px-4 py-3.5">순도시험</th>
-                <th className="px-4 py-3.5">건조감량</th>
-                <th className="px-4 py-3.5">회분</th>
-                <th className="px-4 py-3.5">산불용성회분</th>
-                <th className="px-4 py-3.5">정유함량</th>
-                <th className="px-4 py-3.5">엑스함량</th>
-                <th className="px-4 py-3.5">정량법</th>
+                <th className="px-4 py-3.5 min-w-[80px]">건조감량<br/><span className="font-normal text-slate-400">(%이하)</span></th>
+                <th className="px-4 py-3.5 min-w-[70px]">회분<br/><span className="font-normal text-slate-400">(%이하)</span></th>
+                <th className="px-4 py-3.5 min-w-[90px]">산불용성<br/>회분<br/><span className="font-normal text-slate-400">(%이하)</span></th>
+                <th className="px-4 py-3.5 min-w-[80px]">정유함량<br/><span className="font-normal text-slate-400">(mL이상)</span></th>
+                <th className="px-4 py-3.5 min-w-[80px]">엑스함량</th>
+                <th className="px-4 py-3.5 min-w-[80px]">정량법</th>
                 <th
                   onClick={() => requestSort('specimenIds')}
                   className="px-4 py-3.5 cursor-pointer hover:bg-slate-100 transition-colors select-none"
